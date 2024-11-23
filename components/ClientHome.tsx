@@ -1,158 +1,82 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
-import Image from 'next/image'
+import { useState, useEffect, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { searchRestaurantsAndEvents } from '@/lib/api'
 import { Restaurant, Event } from '@/lib/types'
-import { searchRestaurantsAndEvents, getFeaturedRestaurants, getFeaturedEvents } from '@/lib/api'
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 
-interface ClientHomeProps {
-  initialRestaurants: Restaurant[]
-  initialEvents: Event[]
-}
-
-export default function ClientHome({ initialRestaurants, initialEvents }: ClientHomeProps) {
-  const [restaurants, setRestaurants] = useState(initialRestaurants)
-  const [events, setEvents] = useState(initialEvents)
-  const [isSearching, setIsSearching] = useState(false)
+export default function ClientHome() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('query') || '')
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
+  const [events, setEvents] = useState<Event[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const restaurantsRef = useRef<HTMLDivElement>(null)
   const eventsRef = useRef<HTMLDivElement>(null)
-  const searchParams = useSearchParams()
 
   useEffect(() => {
-    const query = searchParams.get('q')
-    if (query !== null) {
-      if (query.trim() === '') {
-        resetToInitialState()
-      } else {
-        handleSearch(query)
+    const fetchData = async () => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const { restaurants, events } = await searchRestaurantsAndEvents(searchQuery)
+        setRestaurants(restaurants)
+        setEvents(events)
+      } catch (err) {
+        setError('Failed to fetch data. Please try again later.')
+        console.error('Error fetching data:', err)
+      } finally {
+        setIsLoading(false)
       }
     }
-  }, [searchParams])
 
-  const handleSearch = async (query: string) => {
-    setIsSearching(true)
-    try {
-      const results = await searchRestaurantsAndEvents(query)
-      setRestaurants(results.restaurants)
-      setEvents(results.events)
-    } catch (error) {
-      console.error('Search error:', error)
-      setRestaurants([])
-      setEvents([])
-    }
-  }
-
-  const resetToInitialState = async () => {
-    setIsSearching(false)
-    try {
-      const featuredRestaurants = await getFeaturedRestaurants()
-      const featuredEvents = await getFeaturedEvents()
-      setRestaurants(featuredRestaurants)
-      setEvents(featuredEvents)
-    } catch (error) {
-      console.error('Error fetching featured content:', error)
-      setRestaurants(initialRestaurants)
-      setEvents(initialEvents)
-    }
-  }
+    fetchData()
+  }, [searchQuery])
 
   const scroll = (direction: 'left' | 'right', ref: React.RefObject<HTMLDivElement>) => {
     if (ref.current) {
-      const scrollAmount = 300
-      ref.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-      })
+      const { scrollLeft, clientWidth } = ref.current
+      const scrollTo = direction === 'left' ? scrollLeft - clientWidth : scrollLeft + clientWidth
+      ref.current.scrollTo({ left: scrollTo, behavior: 'smooth' })
     }
   }
 
-  return (
-    <div className="flex flex-col min-h-screen">
-      <main className="flex-grow">
-        {isSearching ? (
-          <div className="container mx-auto px-4 py-8">
-            <h2 className="text-2xl font-bold mb-4">Search Results</h2>
-            {restaurants.length === 0 && events.length === 0 ? (
-              <p className="text-lg">No results found for your search. Please try a different query.</p>
-            ) : (
-              <>
-                {restaurants.length > 0 && (
-                  <>
-                    <h3 className="text-xl font-semibold mb-2">Restaurants</h3>
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-                      {restaurants.map((restaurant) => (
-                        <Card key={restaurant._id}>
-                          <CardHeader>
-                            <Image
-                              src={restaurant.image}
-                              alt={restaurant.name}
-                              width={400}
-                              height={300}
-                              className="w-full h-48 object-cover rounded-t-lg"
-                            />
-                            <CardTitle>{restaurant.name}</CardTitle>
-                            <CardDescription>{restaurant.cuisine}</CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                            <p>{restaurant.description}</p>
-                          </CardContent>
-                          <CardFooter>
-                            <Link href={`/restaurants/${restaurant._id}`}>
-                              <Button>Make a Reservation</Button>
-                            </Link>
-                          </CardFooter>
-                        </Card>
-                      ))}
-                    </div>
-                  </>
-                )}
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
 
-                {events.length > 0 && (
-                  <>
-                    <h3 className="text-xl font-semibold mb-2">Events</h3>
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                      {events.map((event) => (
-                        <Card key={event._id}>
-                          <CardHeader>
-                            <Image
-                              src={event.image}
-                              alt={event.name}
-                              width={400}
-                              height={300}
-                              className="w-full h-48 object-cover rounded-t-lg"
-                            />
-                            <CardTitle>{event.name}</CardTitle>
-                            <CardDescription>{new Date(event.date).toLocaleDateString()}</CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                            <p>{event.description}</p>
-                            <p className="mt-2 font-semibold">
-                              Hosted by: {event.restaurantName || 'Loading...'}
-                            </p>
-                          </CardContent>
-                          <CardFooter>
-                            <Link href={`/events/${event._id}`}>
-                              <Button>View Details</Button>
-                            </Link>
-                          </CardFooter>
-                        </Card>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-          </div>
+  if (error) {
+    return (
+      <div className="text-center text-red-600 p-4">
+        <p>{error}</p>
+        <Button onClick={() => window.location.reload()} className="mt-4">
+          Retry
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Welcome to Hungry Crush</h1>
+
+      <main>
+        {restaurants.length === 0 && events.length === 0 ? (
+          <p>No results found.</p>
         ) : (
           <>
-            {/* Featured Restaurants */}
             <section className="mb-12">
-              <h2 className="text-2xl font-bold mb-4">Featured Restaurants</h2>
+              <h2 className="text-2xl font-semibold mb-4">Featured Restaurants</h2>
               <div className="relative">
                 <Button
                   variant="outline"
@@ -163,29 +87,28 @@ export default function ClientHome({ initialRestaurants, initialEvents }: Client
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <div ref={restaurantsRef} className="flex overflow-x-auto space-x-4 pb-4 scrollbar-hide">
-                  {restaurants.map((restaurant) => (
-                    <Card key={restaurant._id} className="flex-shrink-0 w-64">
-                      <CardHeader>
-                        <Image
-                          src={restaurant.image}
-                          alt={restaurant.name}
-                          width={400}
-                          height={300}
-                          className="w-full h-40 object-cover rounded-t-lg"
-                        />
-                        <CardTitle className="text-lg">{restaurant.name}</CardTitle>
-                        <CardDescription>{restaurant.cuisine}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm line-clamp-2">{restaurant.description}</p>
-                      </CardContent>
-                      <CardFooter>
-                        <Link href={`/restaurants/${restaurant._id}`}>
-                          <Button size="sm">Make a Reservation</Button>
-                        </Link>
-                      </CardFooter>
-                    </Card>
+                <div
+                  ref={restaurantsRef}
+                  className="flex overflow-x-auto space-x-4 pb-4 scrollbar-hide no-scrollbar"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  {restaurants.map((restaurant, index) => (
+                    <div key={restaurant.id || index} className="flex-shrink-0 w-64">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>{restaurant.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-gray-600">{restaurant.cuisine}</p>
+                          <p className="mt-2">{restaurant.description}</p>
+                        </CardContent>
+                        <CardFooter>
+                          <Link href={`/restaurants/${restaurant.id}`} passHref>
+                            <Button className="w-full">Make Reservation</Button>
+                          </Link>
+                        </CardFooter>
+                      </Card>
+                    </div>
                   ))}
                 </div>
                 <Button
@@ -200,9 +123,8 @@ export default function ClientHome({ initialRestaurants, initialEvents }: Client
               </div>
             </section>
 
-            {/* Featured Events */}
             <section>
-              <h2 className="text-2xl font-bold mb-4">Featured Events</h2>
+              <h2 className="text-2xl font-semibold mb-4">Upcoming Events</h2>
               <div className="relative">
                 <Button
                   variant="outline"
@@ -213,32 +135,31 @@ export default function ClientHome({ initialRestaurants, initialEvents }: Client
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <div ref={eventsRef} className="flex overflow-x-auto space-x-4 pb-4 scrollbar-hide">
-                  {events.map((event) => (
-                    <Card key={event._id} className="flex-shrink-0 w-64">
-                      <CardHeader>
-                        <Image
-                          src={event.image}
-                          alt={event.name}
-                          width={400}
-                          height={300}
-                          className="w-full h-40 object-cover rounded-t-lg"
-                        />
-                        <CardTitle className="text-lg">{event.name}</CardTitle>
-                        <CardDescription>{new Date(event.date).toLocaleDateString()}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm line-clamp-2">{event.description}</p>
-                        <p className="mt-2 text-sm font-semibold">
-                          Hosted by: {event.restaurantName || 'Loading...'}
-                        </p>
-                      </CardContent>
-                      <CardFooter>
-                        <Link href={`/events/${event._id}`}>
-                          <Button size="sm">View Details</Button>
-                        </Link>
-                      </CardFooter>
-                    </Card>
+                <div
+                  ref={eventsRef}
+                  className="flex overflow-x-auto space-x-4 pb-4 scrollbar-hide no-scrollbar"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  {events.map((event, index) => (
+                    <div key={event.id || index} className="flex-shrink-0 w-64">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>{event.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-gray-600">{new Date(event.date).toLocaleDateString()}</p>
+                          <p className="mt-2">{event.description}</p>
+                          {event.restaurant && (
+                            <p className="mt-2 font-semibold">Hosted by: {event.restaurant.name}</p>
+                          )}
+                        </CardContent>
+                        <CardFooter>
+                          <Link href={`/events/${event.id}`} passHref>
+                            <Button className="w-full">View Details</Button>
+                          </Link>
+                        </CardFooter>
+                      </Card>
+                    </div>
                   ))}
                 </div>
                 <Button

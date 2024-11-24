@@ -34,3 +34,5 @@ yarn-error.log*
 next-env.d.ts
 EOF.env.local
 .env
+passwords.txt
+passwords.txt

@@ -1,9 +1,13 @@
-import ClientHome from '@/components/ClientHome'
 import { getFeaturedRestaurants, getFeaturedEvents } from '@/lib/api'
+import ClientHome from '@/components/ClientHome'
+import type { Restaurant, Event } from '@/lib/types'
 
 export default async function Home() {
-  const initialRestaurants = await getFeaturedRestaurants()
-  const initialEvents = await getFeaturedEvents()
+  // Fetch initial data server-side
+  const [restaurants, events] = await Promise.all([
+    getFeaturedRestaurants(),
+    getFeaturedEvents()
+  ])
 
-  return <ClientHome initialRestaurants={initialRestaurants} initialEvents={initialEvents} />
+  return <ClientHome initialRestaurants={restaurants} initialEvents={events} />
 }

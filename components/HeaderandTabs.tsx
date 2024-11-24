@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Search, User } from 'lucide-react'
 
-export default function HeaderAndTabs() {
+export default function Header() {
   const [searchQuery, setSearchQuery] = useState('')
   const { data: session } = useSession()
 

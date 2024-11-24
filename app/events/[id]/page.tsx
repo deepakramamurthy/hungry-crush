@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -34,12 +35,16 @@ async function getEvent(id: string): Promise<Event> {
   };
 }
 
-export default function EventPage({ params }: { params: { id: string } }) {
+export default function EventPage() {
+  const params = useParams()
+  const id = params?.id as string
   const [event, setEvent] = useState<Event | null>(null)
 
   useEffect(() => {
-    getEvent(params.id).then(setEvent)
-  }, [params.id])
+    if (id) {
+      getEvent(id).then(setEvent)
+    }
+  }, [id])
 
   if (!event) {
     return <div className="container mx-auto px-4 py-8">Loading...</div>

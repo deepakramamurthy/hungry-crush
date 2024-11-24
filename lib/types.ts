@@ -12,7 +12,7 @@ export interface Event {
   name: string;
   date: string;
   description: string;
-  restaurantName?: string;
+  restaurantName: string;
   image: string;
   featured: boolean;
 }

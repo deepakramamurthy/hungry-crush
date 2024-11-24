@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useParams } from 'next/navigation'
+import React, { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Calendar, MapPin, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -74,23 +76,34 @@ async function getEvents(restaurantId: string): Promise<Event[]> {
   ];
 }
 
-export default function RestaurantPage({ params }: { params: { id: string } }) {
+export default function RestaurantPage() {
+  const params = useParams()
+  const id = params?.id as string
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [menu, setMenu] = useState<MenuItem[]>([])
   const [events, setEvents] = useState<Event[]>([])
   const [activeMenuCategory, setActiveMenuCategory] = useState<string>('')
   const tabsRef = useRef<HTMLDivElement>(null)
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState('menu')
 
   useEffect(() => {
-    getRestaurant(params.id).then(setRestaurant)
-    getMenu(params.id).then((menuItems) => {
-      setMenu(menuItems)
-      if (menuItems.length > 0) {
-        setActiveMenuCategory(menuItems[0].category)
-      }
-    })
-    getEvents(params.id).then(setEvents)
-  }, [params.id])
+    if (id) {
+      getRestaurant(id).then(setRestaurant)
+      getMenu(id).then((menuItems) => {
+        setMenu(menuItems)
+        if (menuItems.length > 0) {
+          setActiveMenuCategory(menuItems[0].category)
+        }
+      })
+      getEvents(id).then(setEvents)
+    }
+
+    const tabParam = searchParams.get('tab')
+    if (tabParam && ['menu', 'book', 'events'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [id, searchParams])
 
   const menuCategories = Array.from(new Set(menu.map(item => item.category)))
 
@@ -142,11 +155,26 @@ export default function RestaurantPage({ params }: { params: { id: string } }) {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="menu" className="w-full max-w-4xl mx-auto mt-8">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="menu">Menu</TabsTrigger>
-          <TabsTrigger value="book">Reserve a Table</TabsTrigger>
-          <TabsTrigger value="events">Events</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-4xl mx-auto mt-8">
+        <TabsList className="grid w-full grid-cols-3 p-1 bg-gray-100">
+          <TabsTrigger 
+            value="menu"
+            className="data-[state=active]:bg-black data-[state=active]:text-white"
+          >
+            Menu
+          </TabsTrigger>
+          <TabsTrigger 
+            value="book"
+            className="data-[state=active]:bg-black data-[state=active]:text-white"
+          >
+            Reserve a Table
+          </TabsTrigger>
+          <TabsTrigger 
+            value="events"
+            className="data-[state=active]:bg-black data-[state=active]:text-white"
+          >
+            Events
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="menu">
           <Card>
@@ -235,7 +263,7 @@ export default function RestaurantPage({ params }: { params: { id: string } }) {
                   <label htmlFor="guests" className="block text-sm font-medium text-gray-700">Number of Guests</label>
                   <Input type="number" id="guests" name="guests" min="1" className="mt-1" />
                 </div>
-                <Button type="submit" className="w-full">Make a Reservation</Button>
+                <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800">Make a Reservation</Button>
               </form>
             </CardContent>
           </Card>
@@ -268,7 +296,7 @@ export default function RestaurantPage({ params }: { params: { id: string } }) {
                         <span>{event.time}</span>
                       </div>
                       <p className="text-sm text-gray-600 mt-2">{event.description}</p>
-                      <Button className="mt-4">RSVP</Button>
+                      <Button className="mt-4 bg-black text-white hover:bg-gray-800">RSVP</Button>
                     </div>
                   </div>
                 </div>

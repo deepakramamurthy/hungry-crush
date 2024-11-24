@@ -1,34 +1,32 @@
 import { NextResponse } from 'next/server'
 import { getAllRestaurants, getAllEvents } from '@/lib/api'
+import type { Restaurant, Event } from '@/lib/types'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const query = searchParams.get('q')
+  const query = searchParams.get('query')
+
+  if (!query) {
+    return NextResponse.json({ restaurants: [], events: [] })
+  }
 
   try {
-    const restaurants = await getAllRestaurants()
-    const events = await getAllEvents()
+    const allRestaurants: Restaurant[] = await getAllRestaurants()
+    const allEvents: Event[] = await getAllEvents()
 
-    if (!query) {
-      // If no query, return all restaurants and events, sorted with featured items first
-      const sortedRestaurants = restaurants.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
-      const sortedEvents = events.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
-      return NextResponse.json({ restaurants: sortedRestaurants, events: sortedEvents })
-    }
+    const restaurants = allRestaurants.filter(restaurant =>
+      restaurant.name.toLowerCase().includes(query.toLowerCase()) ||
+      restaurant.cuisine.toLowerCase().includes(query.toLowerCase()) ||
+      restaurant.description.toLowerCase().includes(query.toLowerCase())
+    )
 
-    const filteredRestaurants = restaurants.filter(restaurant =>
-      restaurant.name.toLowerCase().includes(query.toLowerCase())
-    ).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
-
-    const filteredEvents = events.filter(event =>
+    const events = allEvents.filter(event =>
       event.name.toLowerCase().includes(query.toLowerCase()) ||
+      event.description.toLowerCase().includes(query.toLowerCase()) ||
       (event.restaurantName && event.restaurantName.toLowerCase().includes(query.toLowerCase()))
-    ).sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0))
+    )
 
-    return NextResponse.json({
-      restaurants: filteredRestaurants,
-      events: filteredEvents
-    })
+    return NextResponse.json({ restaurants, events })
   } catch (error) {
     console.error('Search error:', error)
     return NextResponse.json({ error: 'An error occurred while searching' }, { status: 500 })

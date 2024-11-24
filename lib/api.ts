@@ -37,14 +37,23 @@ export async function getFeaturedEvents(): Promise<Event[]> {
 }
 
 export async function searchRestaurantsAndEvents(query: string): Promise<{ restaurants: Restaurant[], events: Event[] }> {
-  try {
-    const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
-    if (!response.ok) {
-      throw new Error('Search request failed')
-    }
-    return await response.json()
-  } catch (error) {
-    console.error('Error searching restaurants and events:', error)
-    throw error
-  }
+  const allRestaurants = await getAllRestaurants();
+  const allEvents = await getAllEvents();
+
+  const filteredRestaurants = allRestaurants.filter(restaurant =>
+    restaurant.name.toLowerCase().includes(query.toLowerCase()) ||
+    restaurant.cuisine.toLowerCase().includes(query.toLowerCase()) ||
+    restaurant.description.toLowerCase().includes(query.toLowerCase())
+  );
+
+  const filteredEvents = allEvents.filter(event =>
+    event.name.toLowerCase().includes(query.toLowerCase()) ||
+    event.description.toLowerCase().includes(query.toLowerCase()) ||
+    event.restaurantName.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return {
+    restaurants: filteredRestaurants,
+    events: filteredEvents
+  };
 }

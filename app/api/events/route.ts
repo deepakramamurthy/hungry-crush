@@ -1,19 +1,62 @@
 import { NextResponse } from 'next/server'
-
-const mockEvents = [
-  { _id: '1', name: 'Wine Tasting Evening', date: '2024-12-15', description: 'Explore a variety of wines with our sommelier.', restaurantName: 'Tasty Bites' },
-  { _id: '2', name: 'Sushi Making Class', date: '2024-12-20', description: 'Learn to make sushi from our expert chefs.', restaurantName: 'Sushi Haven' },
-  { _id: '3', name: 'Spicy Food Challenge', date: '2024-12-25', description: 'Test your spice tolerance with our special menu.', restaurantName: 'Spice Garden' },
-]
+import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
+  const query = searchParams.get('query')
   const featured = searchParams.get('featured')
 
-  let events = mockEvents
-  if (featured === 'true') {
-    events = events.slice(0, 2) // Return only 2 featured events
+  try {
+    let events
+    if (query) {
+      events = await prisma.event.findMany({
+        where: {
+          OR: [
+            { name: { contains: query, mode: 'insensitive' } },
+            { description: { contains: query, mode: 'insensitive' } },
+          ],
+        } as Prisma.EventWhereInput,
+        include: { restaurant: true },
+      })
+    } else if (featured === 'true') {
+      events = await prisma.event.findMany({
+        where: {
+          featured: true
+        } as Prisma.EventWhereInput,
+        orderBy: { date: 'asc' },
+        include: { restaurant: true },
+      })
+    } else {
+      events = await prisma.event.findMany({
+        include: { restaurant: true },
+      })
+    }
+    return NextResponse.json(events)
+  } catch (error) {
+    console.error('Error fetching events:', error)
+    return NextResponse.json({ error: 'Error fetching events' }, { status: 500 })
   }
+}
 
-  return NextResponse.json(events)
+export async function POST(request: Request) {
+  try {
+    const body = await request.json()
+    const event = await prisma.event.create({
+      data: {
+        name: body.name,
+        description: body.description,
+        image: body.image,
+        date: new Date(body.date),
+        featured: body.featured ?? false,
+        restaurant: {
+          connect: { id: body.restaurantId }
+        }
+      } as Prisma.EventCreateInput,
+    })
+    return NextResponse.json(event)
+  } catch (error) {
+    console.error('Error creating event:', error)
+    return NextResponse.json({ error: 'Error creating event' }, { status: 500 })
+  }
 }

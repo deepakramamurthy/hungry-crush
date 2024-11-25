@@ -1,11 +1,10 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/api/restaurants/route": "app/api/restaurants/route.js",
+  "/api/events/route": "app/api/events/route.js",
+  "/api/search/route": "app/api/search/route.js",
   "/page": "app/page.js",
-  "/contact/page": "app/contact/page.js",
-  "/events/[id]/page": "app/events/[id]/page.js",
-  "/events/page": "app/events/page.js",
   "/restaurants/page": "app/restaurants/page.js",
-  "/auth/signup/page": "app/auth/signup/page.js",
-  "/auth/signin/page": "app/auth/signin/page.js"
+  "/events/page": "app/events/page.js",
+  "/about/page": "app/about/page.js",
+  "/contact/page": "app/contact/page.js"
 }
